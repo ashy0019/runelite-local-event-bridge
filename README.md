@@ -19,11 +19,7 @@ The bridge is intentionally one-way with respect to RuneLite gameplay: it observ
 
 - The destination is fixed in production code to IPv4 loopback (`127.0.0.1`) on port `41713`. There is no host, URL, or port configuration.
 - The plugin does not make Internet requests, open browser links, launch external programs, use reflection/JNI/JNA, or read/write files.
-- Network connection, handshake, and writes run on a dedicated daemon executor rather than the RuneLite client thread.
-- Transient events are best-effort and are discarded while disconnected; current state is coalesced and replayed after reconnect.
-- The protocol has no source-control message. The consumer can only acknowledge the handshake or report a protocol error.
 - The bridge does not publish player names, account identifiers, positions, bank/equipment contents, raw inventory item IDs, NPC targets, menu entries, or world-state snapshots.
-- Chat message text is included because phrase matching is part of the v1 event contract. Data is sent only to the local loopback consumer.
 
 See [`PLUGIN_HUB_REVIEW.md`](PLUGIN_HUB_REVIEW.md) for the compact review surface and [`docs/local-event-protocol-v1.md`](docs/local-event-protocol-v1.md) for the wire contract.
 
