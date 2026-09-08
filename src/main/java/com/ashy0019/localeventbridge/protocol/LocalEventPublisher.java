@@ -182,7 +182,7 @@ public final class LocalEventPublisher implements LocalEventSink, AutoCloseable
 		{
 			return;
 		}
-		if (eventQueue.offer(new QueuedEvent(new TransportMessage.Event(validated), null, 0L)))
+		if (eventQueue.offer(new QueuedEvent(new TransportMessage.Event(validated))))
 		{
 			requestIo();
 		}
@@ -208,23 +208,41 @@ public final class LocalEventPublisher implements LocalEventSink, AutoCloseable
 		ensureOpen();
 		LocalEvent validated = requireSource(event);
 		String key = stateKey(validated);
-		long revision;
 		synchronized (stateLock)
 		{
-			revision = ++stateRevision;
+			boolean sessionStateReady = connected && stateReplayCompleteLocked();
+			long revision = ++stateRevision;
 			latestStates.put(
 				key,
 				new StateSnapshot(revision, new TransportMessage.State(validated))
 			);
-		}
 
-		if (connected)
-		{
-			eventQueue.offer(
-				new QueuedEvent(new TransportMessage.Event(validated), key, revision)
-			);
+			if (sessionStateReady
+				&& eventQueue.offer(new QueuedEvent(new TransportMessage.Event(validated))))
+			{
+				// The live EVENT carries this revision to the consumer. Suppress the
+				// matching STATE frame so transition trackers see the old value first.
+				sentStateRevisions.put(key, revision);
+			}
 		}
 		requestIo();
+	}
+
+	private boolean stateReplayCompleteLocked()
+	{
+		if (sentResetRevision < resetRevision)
+		{
+			return false;
+		}
+		for (Map.Entry<String, StateSnapshot> entry : latestStates.entrySet())
+		{
+			long sentRevision = sentStateRevisions.getOrDefault(entry.getKey(), 0L);
+			if (sentRevision < entry.getValue().revision)
+			{
+				return false;
+			}
+		}
+		return true;
 	}
 
 	private LocalEvent requireSource(LocalEvent event)
@@ -294,13 +312,6 @@ public final class LocalEventPublisher implements LocalEventSink, AutoCloseable
 				}
 
 				write(event.message);
-				if (event.stateKey != null)
-				{
-					synchronized (stateLock)
-					{
-						sentStateRevisions.put(event.stateKey, event.revision);
-					}
-				}
 			}
 		}
 		catch (IOException | RuntimeException ex)
@@ -565,17 +576,10 @@ public final class LocalEventPublisher implements LocalEventSink, AutoCloseable
 	private static final class QueuedEvent
 	{
 		private final TransportMessage.Event message;
-		private final String stateKey;
-		private final long revision;
 
-		private QueuedEvent(
-			TransportMessage.Event message,
-			String stateKey,
-			long revision)
+		private QueuedEvent(TransportMessage.Event message)
 		{
 			this.message = message;
-			this.stateKey = stateKey;
-			this.revision = revision;
 		}
 	}
 

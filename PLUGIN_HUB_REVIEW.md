@@ -63,6 +63,6 @@ The plugin does not:
 
 The production source uses RuneLite-provided APIs and injected Gson. The repository adds no production runtime dependency beyond RuneLite. `runelite-plugin.properties` uses `build=standard`.
 
-## Compatibility identifiers
+## Protocol identifiers
 
-Protocol v1 currently retains the historical wire identifiers `hapticscape-local-source` and `hapticscape-local-events` so existing local consumers continue to interoperate. They are protocol strings only; this repository contains no HapticScape application code or dependency. A future protocol version can rename them with an explicit compatibility transition.
+Protocol v1 uses the generic wire identifiers `local-event-bridge` and `local-event-bridge-events`. They identify this documented local protocol rather than any particular companion application.
