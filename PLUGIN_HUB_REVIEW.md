@@ -10,7 +10,7 @@ The plugin converts a fixed allowlist of RuneLite observations into a small, sou
 
 - Outbound TCP client only.
 - Destination is fixed to `127.0.0.1:41713` in production code.
-- No hostname lookup, LAN address, Internet URL, user-configurable host, or user-configurable port.
+- The destination is the numeric IPv4 loopback address `127.0.0.1`; there is no configurable hostname, LAN address, Internet URL, host, or port.
 - RuneLite startup does not wait for a consumer. Connection/reconnect work is performed on a daemon executor.
 - Transient events are not buffered across disconnects. State snapshots are coalesced to their latest value.
 
@@ -25,10 +25,12 @@ The source can send only:
 - `state`
 - `reset`
 
-The consumer can return only:
+The consumer can return only these handshake responses:
 
 - `hello_ack`
 - `error`
+
+After the handshake completes, the publisher does not read further application messages from the consumer.
 
 There is no protocol message for mouse/keyboard input, menu invocation, movement, interaction, chat input, prayer switching, or any other RuneLite/game action.
 
