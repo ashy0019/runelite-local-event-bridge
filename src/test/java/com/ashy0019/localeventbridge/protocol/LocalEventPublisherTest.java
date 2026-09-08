@@ -2,6 +2,7 @@ package com.ashy0019.localeventbridge.protocol;
 
 import com.ashy0019.localeventbridge.event.ActorDeathObservation;
 import com.ashy0019.localeventbridge.event.InventoryOccupancyEvent;
+import com.ashy0019.localeventbridge.event.ResourceChangedEvent;
 import com.google.gson.Gson;
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -63,6 +64,57 @@ public class LocalEventPublisherTest
 		}
 	}
 
+	@Test
+	public void liveStatefulObservationsAreEventsAfterInitialStateReplay()
+		throws Exception
+	{
+		TransportWireCodec codec = new TransportWireCodec(new Gson());
+		int port = unusedLoopbackPort();
+
+		try (LocalEventPublisher publisher = new LocalEventPublisher(
+			"runelite",
+			codec,
+			EnumSet.allOf(SourceCapability.class),
+			port
+		))
+		{
+			publisher.seedInventory(new InventoryOccupancyEvent("runelite", 27, 28));
+			publisher.seedResource(new ResourceChangedEvent(
+				"runelite",
+				ResourceChangedEvent.Kind.PRAYER,
+				20,
+				99
+			));
+
+			try (FakeReceiver receiver = new FakeReceiver(codec, port, 5, 3))
+			{
+				receiver.awaitReplay();
+
+				publisher.onInventory(new InventoryOccupancyEvent("runelite", 28, 28));
+				publisher.onResource(new ResourceChangedEvent(
+					"runelite",
+					ResourceChangedEvent.Kind.PRAYER,
+					10,
+					99
+				));
+
+				List<TransportMessage> messages = receiver.awaitMessages();
+				assertTrue(messages.get(0) instanceof TransportMessage.Reset);
+				assertTrue(messages.get(1) instanceof TransportMessage.State);
+				assertTrue(messages.get(2) instanceof TransportMessage.State);
+				assertTrue(messages.get(3) instanceof TransportMessage.Event);
+				assertTrue(messages.get(4) instanceof TransportMessage.Event);
+
+				TransportMessage.Event inventoryMessage =
+					(TransportMessage.Event) messages.get(3);
+				TransportMessage.Event prayerMessage =
+					(TransportMessage.Event) messages.get(4);
+				assertTrue(inventoryMessage.getEvent() instanceof InventoryOccupancyEvent);
+				assertTrue(prayerMessage.getEvent() instanceof ResourceChangedEvent);
+			}
+		}
+	}
+
 	private static int unusedLoopbackPort() throws IOException
 	{
 		try (ServerSocket socket = new ServerSocket(0, 1, LoopbackEndpoint.address()))
@@ -77,13 +129,26 @@ public class LocalEventPublisherTest
 		private final ServerSocket server;
 		private final ExecutorService executor;
 		private final CompletableFuture<List<TransportMessage>> messages;
+		private final CompletableFuture<Void> replayReady = new CompletableFuture<>();
+		private final int replayMessageCount;
 
 		private FakeReceiver(TransportWireCodec codec, int port, int expectedMessages)
+			throws IOException
+		{
+			this(codec, port, expectedMessages, 0);
+		}
+
+		private FakeReceiver(
+			TransportWireCodec codec,
+			int port,
+			int expectedMessages,
+			int replayMessageCount)
 			throws IOException
 		{
 			this.codec = codec;
 			this.server = new ServerSocket(port, 1, LoopbackEndpoint.address());
 			this.executor = Executors.newSingleThreadExecutor();
+			this.replayMessageCount = replayMessageCount;
 			this.messages = CompletableFuture.supplyAsync(
 				() -> receive(expectedMessages),
 				executor
@@ -120,6 +185,10 @@ public class LocalEventPublisherTest
 						throw new AssertionError("Publisher closed before expected frames arrived");
 					}
 					received.add(codec.decode(frame));
+					if (replayMessageCount > 0 && received.size() == replayMessageCount)
+					{
+						replayReady.complete(null);
+					}
 				}
 				return received;
 			}
@@ -127,6 +196,12 @@ public class LocalEventPublisherTest
 			{
 				throw new RuntimeException(failure);
 			}
+		}
+
+		private void awaitReplay()
+			throws InterruptedException, ExecutionException, TimeoutException
+		{
+			replayReady.get(5, TimeUnit.SECONDS);
 		}
 
 		private List<TransportMessage> awaitMessages()

@@ -16,14 +16,13 @@ Frames are newline-delimited UTF-8 JSON and are bounded to 524,288 bytes.
 
 ## Stable wire identifiers
 
-Version 1 retains the existing wire protocol identifiers for compatibility:
+Version 1 uses generic wire protocol identifiers:
 
-- transport: `hapticscape-local-source`
-- events: `hapticscape-local-events`
+- transport: `local-event-bridge`
+- events: `local-event-bridge-events`
 
-These strings identify the wire contract; the plugin has no dependency on a
-companion application's implementation. Any local application can implement
-the documented protocol.
+These strings identify the wire contract rather than any particular consumer.
+Any local application can implement the documented protocol.
 
 ## Transport envelope
 
@@ -31,7 +30,7 @@ Every transport frame is a JSON object:
 
 ```json
 {
-  "protocol": "hapticscape-local-source",
+  "protocol": "local-event-bridge",
   "version": 1,
   "kind": "hello",
   "payload": {}
@@ -56,12 +55,12 @@ The first source message is `hello`:
 
 ```json
 {
-  "protocol": "hapticscape-local-source",
+  "protocol": "local-event-bridge",
   "version": 1,
   "kind": "hello",
   "payload": {
     "source": "runelite",
-    "eventProtocol": "hapticscape-local-events",
+    "eventProtocol": "local-event-bridge-events",
     "eventVersion": 1,
     "capabilities": [
       "experience",
@@ -86,7 +85,7 @@ Events use a nested source-neutral envelope:
 
 ```json
 {
-  "protocol": "hapticscape-local-events",
+  "protocol": "local-event-bridge-events",
   "version": 1,
   "source": "runelite",
   "type": "experience.changed",
@@ -113,8 +112,13 @@ at-most-once.
 `state` is a current snapshot. Resource, inventory-occupancy, and status state
 is retained and coalesced while disconnected.
 
+During an established session, a live resource, inventory, or status change is
+sent as `event` so consumers can evaluate transitions, while its newest value is
+also retained for recovery. Explicit seeds and reconnect replay use `state`.
+
 After reconnect, the bridge sends `reset` and then the latest retained state
-before new transient events resume.
+before new transient events resume. Replayed state does not represent a newly
+observed transition.
 
 ## Privacy surface
 

@@ -2,7 +2,6 @@ package com.ashy0019.localeventbridge;
 
 import com.ashy0019.localeventbridge.runelite.RuneLiteEventBridge;
 import com.ashy0019.localeventbridge.protocol.LocalEventPublisher;
-import com.ashy0019.localeventbridge.protocol.LoopbackEndpoint;
 import com.ashy0019.localeventbridge.protocol.TransportWireCodec;
 import com.google.gson.Gson;
 import javax.inject.Inject;
@@ -33,8 +32,8 @@ import org.slf4j.LoggerFactory;
  */
 @PluginDescriptor(
     name = "Local Event Bridge",
-    description = "Publishes a fixed allowlist of RuneLite events to local companion applications",
-    tags = {"integration", "local", "events", "accessibility"}
+    description = "Publishes a fixed allowlist of gameplay observations to local companion apps over IPv4 loopback only",
+    tags = {"integration", "local", "events"}
 )
 public class LocalEventBridgePlugin extends Plugin
 {
@@ -58,18 +57,17 @@ public class LocalEventBridgePlugin extends Plugin
     @Override
     protected void startUp()
     {
-        startGameplayBridge(LoopbackEndpoint.DEFAULT_PORT);
+        startGameplayBridge();
         log.info("Local Event Bridge started; loopback transport will connect when available");
     }
 
-    private void startGameplayBridge(int port)
+    private void startGameplayBridge()
     {
         TransportWireCodec codec = new TransportWireCodec(gson);
         LocalEventPublisher transport = new LocalEventPublisher(
             RuneLiteEventBridge.SOURCE_ID,
             codec,
-            RuneLiteEventBridge.CAPABILITIES,
-            port
+            RuneLiteEventBridge.CAPABILITIES
         );
         RuneLiteEventBridge bridge = new RuneLiteEventBridge(client, itemManager, transport);
         try

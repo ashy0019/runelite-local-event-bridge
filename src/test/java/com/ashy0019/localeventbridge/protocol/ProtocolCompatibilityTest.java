@@ -25,13 +25,13 @@ public class ProtocolCompatibilityTest
 		));
 
 		JsonObject root = new JsonParser().parse(json).getAsJsonObject();
-		assertEquals("hapticscape-local-source", root.get("protocol").getAsString());
+		assertEquals("local-event-bridge", root.get("protocol").getAsString());
 		assertEquals(1, root.get("version").getAsInt());
 		assertEquals("hello", root.get("kind").getAsString());
 
 		JsonObject payload = root.getAsJsonObject("payload");
 		assertEquals("runelite", payload.get("source").getAsString());
-		assertEquals("hapticscape-local-events", payload.get("eventProtocol").getAsString());
+		assertEquals("local-event-bridge-events", payload.get("eventProtocol").getAsString());
 		assertEquals(1, payload.get("eventVersion").getAsInt());
 
 		JsonArray capabilities = payload.getAsJsonArray("capabilities");
@@ -62,7 +62,7 @@ public class ProtocolCompatibilityTest
 		JsonObject event = root
 			.getAsJsonObject("payload")
 			.getAsJsonObject("event");
-		assertEquals("hapticscape-local-events", event.get("protocol").getAsString());
+		assertEquals("local-event-bridge-events", event.get("protocol").getAsString());
 		assertEquals(1, event.get("version").getAsInt());
 		assertEquals("runelite", event.get("source").getAsString());
 		assertEquals("experience.changed", event.get("type").getAsString());
@@ -74,6 +74,18 @@ public class ProtocolCompatibilityTest
 		assertEquals(20, payload.get("gainedXp").getAsInt());
 		assertEquals(1, payload.get("previousLevel").getAsInt());
 		assertEquals(2, payload.get("currentLevel").getAsInt());
+	}
+
+	@Test
+	public void transportKindSurfaceContainsNoGameplayCommand()
+	{
+		assertEquals(6, TransportMessage.Kind.values().length);
+		assertEquals(TransportMessage.Kind.HELLO, TransportMessage.Kind.valueOf("HELLO"));
+		assertEquals(TransportMessage.Kind.HELLO_ACK, TransportMessage.Kind.valueOf("HELLO_ACK"));
+		assertEquals(TransportMessage.Kind.EVENT, TransportMessage.Kind.valueOf("EVENT"));
+		assertEquals(TransportMessage.Kind.STATE, TransportMessage.Kind.valueOf("STATE"));
+		assertEquals(TransportMessage.Kind.RESET, TransportMessage.Kind.valueOf("RESET"));
+		assertEquals(TransportMessage.Kind.ERROR, TransportMessage.Kind.valueOf("ERROR"));
 	}
 
 	@Test
