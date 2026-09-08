@@ -77,6 +77,18 @@ public class ProtocolCompatibilityTest
 	}
 
 	@Test
+	public void transportKindSurfaceContainsNoGameplayCommand()
+	{
+		assertEquals(6, TransportMessage.Kind.values().length);
+		assertEquals(TransportMessage.Kind.HELLO, TransportMessage.Kind.valueOf("HELLO"));
+		assertEquals(TransportMessage.Kind.HELLO_ACK, TransportMessage.Kind.valueOf("HELLO_ACK"));
+		assertEquals(TransportMessage.Kind.EVENT, TransportMessage.Kind.valueOf("EVENT"));
+		assertEquals(TransportMessage.Kind.STATE, TransportMessage.Kind.valueOf("STATE"));
+		assertEquals(TransportMessage.Kind.RESET, TransportMessage.Kind.valueOf("RESET"));
+		assertEquals(TransportMessage.Kind.ERROR, TransportMessage.Kind.valueOf("ERROR"));
+	}
+
+	@Test
 	public void acceptsVersionOneHelloAck()
 	{
 		TransportWireCodec codec = new TransportWireCodec(new Gson());

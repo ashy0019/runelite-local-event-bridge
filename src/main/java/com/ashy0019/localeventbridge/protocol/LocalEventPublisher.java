@@ -65,6 +65,15 @@ public final class LocalEventPublisher implements LocalEventSink, AutoCloseable
 	public LocalEventPublisher(
 		String source,
 		TransportWireCodec codec,
+		Set<SourceCapability> capabilities)
+	{
+		this(source, codec, capabilities, LoopbackEndpoint.DEFAULT_PORT);
+	}
+
+	/** Package-private test seam; production callers always use the fixed loopback port. */
+	LocalEventPublisher(
+		String source,
+		TransportWireCodec codec,
 		Set<SourceCapability> capabilities,
 		int port)
 	{
